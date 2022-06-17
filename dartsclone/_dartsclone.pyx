@@ -1,5 +1,13 @@
 from libc.stdlib cimport malloc, free
+from cpython cimport array
 
+
+import array
+cdef char ** to_cstring_array(list_str):
+    cdef char **ret = <char **>malloc(len(list_str) * sizeof(char *))
+    for i in xrange(len(list_str)):
+        ret[i] = list_str[i]
+    return ret
 
 cdef class DoubleArray:
     def __cinit__(self):
@@ -94,6 +102,9 @@ cdef class DoubleArray:
         else:
             return self.__exact_match_search(_key, length, node_pos)
 
+    def exact_match_search_batch(self, key):
+        return self.__exact_match_search_batch(key)
+
     def common_prefix_search(self, key,
                              size_t max_num_results = 0,
                              size_t length = 0,
@@ -124,6 +135,16 @@ cdef class DoubleArray:
         with nogil:
             self.wrapped.exact_match_search(key, result, length, node_pos)
         return result
+
+    def __exact_match_search_batch(self, key):
+        cdef char ** _key = to_cstring_array(key)
+        cdef int size = len(key)
+        cdef array.array arr = array.array('i', (0 for _ in range(len(key))))
+        cdef int * raw_arr = arr.data.as_ints
+        with nogil:
+            for i in range(size):
+                self.wrapped.exact_match_search(_key[i], raw_arr[i], 0, 0)
+        return arr
 
     def __exact_match_search_pair_type(self, const char *key,
                                             size_t length = 0,

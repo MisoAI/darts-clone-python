@@ -3,6 +3,10 @@ import unittest
 import pickle
 
 from dartsclone import DoubleArray
+import random
+import string
+
+letters = string.ascii_lowercase
 
 
 class DoubleArrayTest(unittest.TestCase):
@@ -61,6 +65,41 @@ class DoubleArrayTest(unittest.TestCase):
         self.assertEqual(5, darts.exact_match_search('テスト'.encode(), pair_type=False))
         self.assertEqual(3, darts.common_prefix_search('testcase'.encode(), pair_type=False)[0])
 
+    def test_darts_array_batch(self):
+        keys = ['test', 'テスト', 'テストケース']
+        darts = DoubleArray()
+        darts.build(sorted([key.encode() for key in keys]), values=[3, 5, 1])
+        array = darts.array()
+        darts = DoubleArray()
+        darts.set_array(array)
+        self.assertEqual([3, 5, 1], list(darts.exact_match_search_batch([k.encode() for k in keys])))
+
+    def test_darts_speed(self):
+        orig_keys = sorted(list(set([''.join((random.choice(letters) for _ in range(10))) for _ in range(10000)])))
+        keys = [k.encode() for k in orig_keys]
+        indices = list(range(len(keys)))
+        darts = DoubleArray()
+        darts.build(sorted([key for key in keys]), values=indices)
+        array = darts.array()
+        darts = DoubleArray()
+        darts.set_array(array)
+
+        a = time.time()
+
+        arr = darts.exact_match_search_batch(keys)
+        print("Batch mode", time.time() - a)
+        self.assertEqual(indices, list(arr))
+        a = time.time()
+        [darts.exact_match_search(key) for key in keys]
+
+        print("Single mode", time.time() - a)
+        dict_ = dict(zip(keys, indices))
+        a = time.time()
+        [dict_[key] for key in keys]
+        print("dict mode", time.time() - a)
+
 
 if __name__ == "__main__":
+    import time
+
     unittest.main()
